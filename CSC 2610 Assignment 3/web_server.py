@@ -56,11 +56,9 @@ def init_database():
     # cursor.execute('''CREATE TABLE IF NOT EXISTS ...''')
     # ... (add your code here)
     
-  #################################################################
-    # Connects to database
-    check_conn = sqlite3.connect(DB_NAME, check_same_thread=False)
-    # Creates cursor (cursor controls the execution of SQL commands)
-    cursor = check_conn.cursor()
+    #################################################################
+    check_conn = sqlite3.connect(DB_NAME, check_same_thread=False) # Connects to database
+    cursor = check_conn.cursor() # Creates cursor (cursor controls the execution of SQL commands)
     # Creates messages table if it does not exist (this uses cursor to execute SQL command)
     cursor.execute('''CREATE TABLE IF NOT EXISTS messages (
                       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -69,14 +67,13 @@ def init_database():
                       timestamp TEXT NOT NULL,
                       message_type TEXT NOT NULL
                       )''')
-    # Creates index on timestamp column for faster queries
-    cursor.execute('''CREATE INDEX IF NOT EXISTS idx_timestamp ON messages (timestamp)''')
+    cursor.execute('''CREATE INDEX IF NOT EXISTS idx_timestamp ON messages (timestamp)''') # Creates index on timestamp column for faster queries
     # Commits (saves) changes and closes connection
     check_conn.commit()
     check_conn.close()
     print("Database initialized and tables created (if they did not exist).")
     pass
-#################################################################
+    #################################################################
 
 def save_message(content, nickname=None, message_type='regular'):
     """
@@ -103,7 +100,7 @@ def save_message(content, nickname=None, message_type='regular'):
     # cursor = conn.cursor()
     # cursor.execute('''INSERT INTO messages ...''')
     # ... (add your code here)
-#################################################################
+    #################################################################
     timestamp = datetime.now().isoformat()
     conn = sqlite3.connect(DB_NAME, check_same_thread=False)
     cursor = conn.cursor()
@@ -112,7 +109,7 @@ def save_message(content, nickname=None, message_type='regular'):
     conn.commit()
     conn.close()
     pass
-#################################################################
+    #################################################################
 
 def get_message_history(limit=100):
     """
@@ -143,7 +140,19 @@ def get_message_history(limit=100):
     # cursor.execute('''SELECT ... ORDER BY timestamp DESC LIMIT ?''', (limit,))
     # ... (add your code here)
     # return list(reversed(messages))  # Reverse to get chronological order
+
+    ##################################################################
+    conn = sqlite3.connect(DB_NAME, check_same_thread=False)
+    cursor = conn.cursor()
+    cursor.execute('''SELECT content, nickname, timestamp, message_type 
+                      FROM messages 
+                      ORDER BY timestamp DESC 
+                      LIMIT ?''', (limit,))
+    messages = cursor.fetchall()
+    conn.close()
+    return list(reversed(messages))  # Reverse to get chronological order
     pass
+    ##################################################################
 
 @app.route('/')
 def index():
@@ -167,6 +176,7 @@ def handle_disconnect():
         # TODO: Save the leave notification to the database
         # Call save_message() with the broadcast_message, nickname, and message_type='system_leave'
         # Example: save_message(broadcast_message, nickname=nickname, message_type='system_leave')
+        save_message(broadcast_message, nickname=nickname, message_type='system_leave')
         
         del websocket_clients[request.sid]
         socketio.emit('message', {'msg': broadcast_message})
@@ -186,6 +196,7 @@ def handle_set_nickname(data):
         # TODO: Save the join notification to the database
         # Call save_message() with the broadcast_message, nickname, and message_type='system_join'
         # Example: save_message(broadcast_message, nickname=nickname, message_type='system_join')
+        save_message(broadcast_message, nickname=nickname, message_type='system_join')
         
         # Broadcast join message
         socketio.emit('message', {'msg': broadcast_message})
@@ -198,6 +209,8 @@ def handle_set_nickname(data):
         # Example:
         # history = get_message_history(limit=100)
         # emit('message_history', {'messages': history})
+        history = get_message_history(limit=100)
+        emit('message_history', {'messages': history})
         
         emit('nickname_set', {'nickname': nickname, 'existing_users': existing_users})
         socketio.emit('users_list', {'users': list(websocket_clients.values())})
@@ -218,6 +231,7 @@ def handle_message(data):
                 # TODO: Save the leave notification to the database
                 # Call save_message() with broadcast_message, nickname, and message_type='system_leave'
                 # Example: save_message(broadcast_message, nickname=nickname, message_type='system_leave')
+                save_message(broadcast_message, nickname=nickname, message_type='system_leave')
                 
                 socketio.emit('message', {'msg': broadcast_message})
                 del websocket_clients[request.sid]
@@ -230,6 +244,7 @@ def handle_message(data):
                 # IMPORTANT: Save only the message content (not the "nickname: message" format)
                 # Call save_message() with the message content, nickname, and message_type='regular'
                 # Example: save_message(message, nickname=nickname, message_type='regular')
+                save_message(message, nickname=nickname, message_type='regular')
                 
                 socketio.emit('message', {'msg': broadcast_message})
     else:
