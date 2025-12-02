@@ -48,16 +48,6 @@ def init_database():
     
     Hint: Use CREATE TABLE IF NOT EXISTS to avoid errors if table already exists
     """
-    ################################################################
-    check_same_thread=False
-    create_table_query = '''CREATE TABLE IF NOT EXISTS messages (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        content TEXT NOT NULL,
-        nickname TEXT,
-        timestamp TEXT NOT NULL,
-        message_type TEXT NOT NULL
-    )'''
-    create_index_query = '''CREATE INDEX IF NOT EXISTS idx_timestamp ON messages (timestamp)'''
 
     # TODO: Implement database initialization
     # Example structure:
@@ -66,20 +56,27 @@ def init_database():
     # cursor.execute('''CREATE TABLE IF NOT EXISTS ...''')
     # ... (add your code here)
     
-    conn = sqlite3.connect(DB_NAME, check_same_thread=False)
-    cursor = conn.cursor()
+  #################################################################
+    # Connects to database
+    check_conn = sqlite3.connect(DB_NAME, check_same_thread=False)
+    # Creates cursor (cursor controls the execution of SQL commands)
+    cursor = check_conn.cursor()
+    # Creates messages table if it does not exist (this uses cursor to execute SQL command)
     cursor.execute('''CREATE TABLE IF NOT EXISTS messages (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        content TEXT NOT NULL,
-        nickname TEXT,
-        timestamp TEXT NOT NULL,
-        message_type TEXT NOT NULL
-    )''')
+                      id INTEGER PRIMARY KEY AUTOINCREMENT,
+                      content TEXT NOT NULL,
+                      nickname TEXT,
+                      timestamp TEXT NOT NULL,
+                      message_type TEXT NOT NULL
+                      )''')
+    # Creates index on timestamp column for faster queries
     cursor.execute('''CREATE INDEX IF NOT EXISTS idx_timestamp ON messages (timestamp)''')
-    conn.commit()
-    conn.close()
+    # Commits (saves) changes and closes connection
+    check_conn.commit()
+    check_conn.close()
     print("Database initialized and tables created (if they did not exist).")
     pass
+#################################################################
 
 def save_message(content, nickname=None, message_type='regular'):
     """
@@ -106,7 +103,16 @@ def save_message(content, nickname=None, message_type='regular'):
     # cursor = conn.cursor()
     # cursor.execute('''INSERT INTO messages ...''')
     # ... (add your code here)
+#################################################################
+    timestamp = datetime.now().isoformat()
+    conn = sqlite3.connect(DB_NAME, check_same_thread=False)
+    cursor = conn.cursor()
+    cursor.execute('''INSERT INTO messages (content, nickname, timestamp, message_type) 
+                      VALUES (?, ?, ?, ?)''', (content, nickname, timestamp, message_type))
+    conn.commit()
+    conn.close()
     pass
+#################################################################
 
 def get_message_history(limit=100):
     """
